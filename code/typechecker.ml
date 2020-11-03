@@ -454,7 +454,7 @@ let rec typecheck_stmt (tc : Tctxt.t) (s:Ast.stmt node) (to_ret:ret_ty) : Tctxt.
     else type_error s "condition for while is non-boolean"
   | For (vlist, exp, s', block) ->
     let ds = List.map (fun d -> no_loc (Decl d)) vlist in
-    let c1, _ = typecheck_block tc ds to_ret in
+    let c1, r = typecheck_block tc ds to_ret in
     let guard = match exp with Some e -> e | None -> no_loc (CBool true) in
     let after = match s' with Some s -> [s] | None -> [] in
     let ty1 = typecheck_exp c1 guard in

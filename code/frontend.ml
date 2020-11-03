@@ -187,9 +187,9 @@ let oat_alloc_array ct (t:Ast.ty) (size:Ll.operand) : Ll.ty * operand * stream =
     ; ans_id, Bitcast(arr_ty, Id arr_id, ans_ty) ]
 
 
-(* STRUCT TASK: Complete this helper function that allocates an oat structure on the 
-   heap and returns a target operand with the appropriate reference.  
-   
+(* STRUCT TASK: Complete this helper function that allocates an oat structure on the
+   heap and returns a target operand with the appropriate reference.
+
    - generate a call to 'oat_malloc' and use bitcast to convert the
      resulting pointer to the right type
 
@@ -211,7 +211,7 @@ let cmp_binop t (b : Ast.binop) : Ll.operand -> Ll.operand -> Ll.insn  =
   | Ast.Mul  -> ib Ll.Mul
   | Ast.Sub  -> ib Ll.Sub
   | Ast.And  -> ib Ll.And
-  | Ast.IAnd -> ib Ll.And 
+  | Ast.IAnd -> ib Ll.And
   | Ast.IOr  -> ib Ll.Or
   | Ast.Or   -> ib Ll.Or
   | Ast.Shl  -> ib Ll.Shl
@@ -227,7 +227,7 @@ let cmp_binop t (b : Ast.binop) : Ll.operand -> Ll.operand -> Ll.insn  =
 
 (* Compiles an expression exp in context c, outputting the Ll operand that will
    receive the value of the expression, and the stream of instructions
-   implementing the expression. 
+   implementing the expression.
 *)
 
 let rec cmp_exp (tc : TypeCtxt.t) (c:Ctxt.t) (exp:Ast.exp node) : Ll.ty * Ll.operand * stream =
