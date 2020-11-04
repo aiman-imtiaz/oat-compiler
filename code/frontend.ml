@@ -719,7 +719,7 @@ let internals =
 
 (* Oat builtin function context --------------------------------------------- *)
 let builtins = List.map
-    (fun (fname, ftyp) -> 
+    (fun (fname, ftyp) ->
       let args, ret = cmp_fty TypeCtxt.empty ftyp in
       (fname, Ll.Fun (args, ret)))
     Typechecker.builtins

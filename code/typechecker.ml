@@ -40,7 +40,6 @@ let typ_of_unop : Ast.unop -> Ast.ty * Ast.ty = function
 (* subtyping ---------------------------------------------------------------- *)
 (* Decides whether H |- t1 <: t2
     - assumes that H contains the declarations of all the possible struct types
-
     - you will want to introduce addition (possibly mutually recursive)
       helper functions to implement the different judgments of the subtyping
       relation. We have included a template for subtype_ref to get you started.
@@ -103,16 +102,12 @@ and subtype_ret_ty (c : Tctxt.t) (t1 : Ast.ret_ty) (t2 : Ast.ret_ty) : bool =
 (* well-formed types -------------------------------------------------------- *)
 (* Implement a (set of) functions that check that types are well formed according
    to the H |- t and related inference rules. Intuitively, this check can fail if an undefined reference appears as a component of `t`.
-
     - the function should succeed by returning () if the type is well-formed
       according to the rules
-
     - l is just an ast node that provides source location information for
       generating error messages (it's only needed for the type_error generation)
-
     - the function should fail using the "type_error" helper function if the
       type is not well formed. Use `l` to indicate the location in the error.
-
     - tc contains the structure definition context
  *)
 let rec typecheck_ty (l : 'a Ast.node) (tc : Tctxt.t) (t : Ast.ty) : unit =
@@ -154,26 +149,20 @@ let is_nullable_ty (t : Ast.ty) : bool =
 (* Typechecks an expression in the typing context c, returns the type of the
    expression.  This function should implement the inference rules given in the
    oat.pdf specification.  There, they are written:
-
        H; G; L |- exp : t
-
    See tctxt.ml for the implementation of the context c, which represents the
    four typing contexts: H - for structure definitions G - for global
    identifiers L - for local identifiers
-
    Returns the (most precise) type for the expression, if it is type correct
    according to the inference rules.
-
    Uses the type_error function to indicate a (useful!) error message if the
    expression is not type correct.  The exact wording of the error message is
    not important, but the fact that the error is raised, is important.  (Our
    tests also do not check the location information associated with the error.)
-
    Notes: - Structure values permit the programmer to write the fields in any
    order (compared with the structure definition).  This means that, given the
    declaration struct T { a:int; b:int; c:int } The expression new T {b=3; c=4;
    a=1} is well typed.  (You should sort the fields to compare them.)
-
 *)
 let rec typecheck_exp (c : Tctxt.t) (e : Ast.exp node) : Ast.ty =
   match e.elt with
@@ -320,36 +309,28 @@ let rec typecheck_exp (c : Tctxt.t) (e : Ast.exp node) : Ast.ty =
 
 (* Typecheck a statement
    This function should implement the statment typechecking rules from oat.pdf.
-
    Inputs:
     - tc: the type context
     - s: the statement node
     - to_ret: the desired return type (from the function declaration)
-
    Returns:
      - the new type context (which includes newly declared variables in scope
        after this statement)
-
      - A boolean indicating the return behavior of a statement:
         false:  might not return
         true:   definitely returns
-
         in the branching statements, the return behavior of the branching
         statement is the conjunction of the return behavior of the two
         branches: both both branches must definitely return in order for
         the whole statement to definitely return.
-
         Intuitively: if one of the two branches of a conditional does not
         contain a return statement, then the entire conditional statement might
         not return.
-
         looping constructs never definitely return
-
    Uses the type_error function to indicate a (useful!) error message if the
    statement is not type correct.  The exact wording of the error message is
    not important, but the fact that the error is raised, is important.  (Our
    tests also do not check the location information associated with the error.)
-
    - You will probably find it convenient to add a helper function that implements the
      block typecheck rules.
 *)
@@ -537,26 +518,16 @@ let typecheck_fdecl (tc : Tctxt.t) (f : Ast.fdecl) (l : 'a Ast.node) : unit =
 
 (* The following functions correspond to the
    judgments that create the global typechecking context.
-
    create_struct_ctxt: - adds all the struct types to the struct 'S'
    context (checking to see that there are no duplicate fields
-
      H |-s prog ==> H'
-
-
    create_function_ctxt: - adds the the function identifiers and their
    types to the 'G' context (ensuring that there are no redeclared
    function identifiers)
-
      H ; G1 |-f prog ==> G2
-
-
    create_global_ctxt: - typechecks the global initializers and adds
    their identifiers to the 'G' global context
-
      H ; G1 |-g prog ==> G2
-
-
    NOTE: global initializers may mention function identifiers as
    constants, but can mention only other global values that were declared earlier
 *)
