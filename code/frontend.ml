@@ -468,7 +468,12 @@ and cmp_init_arr tc c ty elt id e2 name size =
    Left-hand-sides of assignment statements must either be OAT identifiers,
    or an index into some arbitrary expression of array type. Otherwise, the
    program is not well-formed and your compiler may throw an error.
- *)
+*)
+and if_terminates stream =
+  match List.hd stream with
+  | T _ -> true
+  | _ -> false
+
 and cmp_stmt (tc : TypeCtxt.t) (c:Ctxt.t) (rt:Ll.ty) (stmt:Ast.stmt node) : Ctxt.t * stream =
 
   match stmt.elt with

@@ -1,0 +1,78 @@
+struct Entry {
+  int key;
+  string value
+}
+
+struct Tree {
+  Entry entry;
+  Tree? left;
+  Tree? right
+}
+
+void lookup(Tree? tree, int k) {
+  if? (Tree t = tree) {
+    var entry = t.entry;
+    var key = entry.key;
+    if (key == k) {
+    var value = entry.value;
+    print_string(value);
+    } else {
+      if (k < key){
+      lookup(t.left, k);
+      } else {
+      lookup(t.right, k);
+      }
+    }
+  } else {
+  print_string("notfound!");
+  }
+  return;
+}
+
+Tree insert(Tree? tree, int k, string v) {
+  if? (Tree t = tree) {
+    var entry = t.entry;
+    var key = entry.key;
+    if (key == k) {
+    entry.value = v;
+    return t;
+    } else {
+      if (k < key){
+      var l = t.left;
+      t.left = insert(l, k, v);
+      return t;
+      } else {
+      var r = t.right;
+      t.right = insert(r, k, v);
+      return t;
+      }
+    }
+  } else {
+  var e1 = new Entry{key = k; value = v};
+  var t1 = new Tree{entry = e1; left = Tree null; right = Tree null};
+  return t1;
+  }
+}
+
+
+int program(int argc, string[] argv) {
+  var n1 = new Entry {key = 8; value = "u1"};
+  var u1 = new Tree{entry = n1; left = Tree null; right = Tree null};
+  lookup(u1, 8);
+  var n2 = new Entry {key = 5; value = "u2"};
+  var u2 = new Tree{entry = n2; left = Tree null; right = u1};
+  lookup(u2, 5);
+
+  var e1 = new Entry{key = 0; value = "a"};
+  var t1 = new Tree{entry = e1; left = Tree null; right = Tree null};
+  var e2 = new Entry{key = 1; value = "d"};
+  var t2 = new Tree{entry = e2; left = t1; right = Tree null};
+  lookup(t1, 0);
+  var t3 = insert(t2, 0, "b");
+  lookup(t2, 0);
+  lookup(t2, 1);
+  var t4 = insert(t3, 1, "c");
+  lookup(t4, 1);
+
+  return 0;
+}
