@@ -166,7 +166,7 @@ let gensym : string -> string =
   let c = ref 0 in
   fun (s:string) -> incr c; Printf.sprintf "_%s%d" s (!c)
 
-(* Amount of space an Oat type takes when stored in the stack, in bytes.  
+(* Amount of space an Oat type takes when stored in the stack, in bytes.
    Note that since structured values are manipulated by reference, all
    Oat values take 8 bytes on the stack.
 *)
@@ -196,7 +196,14 @@ let oat_alloc_array ct (t:Ast.ty) (size:Ll.operand) : Ll.ty * operand * stream =
    - make sure to calculate the correct amount of space to allocate!
 *)
 let oat_alloc_struct ct (id:Ast.id) : Ll.ty * operand * stream =
-  failwith "TODO: oat_alloc_struct"
+  let ans_id, struct_id = gensym "struct", gensym "raw_struct" in
+  let ans_ty = cmp_ty ct @@ TRef (RStruct id) in
+  let struct_ty = Ptr I64 in
+  let fields = TypeCtxt.lookup id ct in
+  let size = Const (Int64.of_int (List.length fields)) in
+  ans_ty, Id ans_id, lift
+    [ struct_id, Call(struct_ty, Gid "oat_malloc", [I64, size])
+    ; ans_id, Bitcast(struct_ty, Id struct_id, ans_ty) ]
 
 
 let str_arr_ty s = Array(1 + String.length s, I8)
@@ -349,7 +356,18 @@ let rec cmp_exp (tc : TypeCtxt.t) (c:Ctxt.t) (exp:Ast.exp node) : Ll.ty * Ll.ope
        - store the resulting value into the structure
    *)
   | Ast.CStruct (id, l) ->
-    failwith "TODO: Ast.CStruct"
+    (*   let size_op = Ll.Const (Int64.of_int @@ List.length l) in*)
+    let struct_ty, struct_op, alloc_code = oat_alloc_struct tc id in
+    let add_elt s (f_id, elt) =
+      let i = TypeCtxt.index_of_field id f_id tc in
+      let ll_elt_ty, elt_op, elt_code = cmp_exp tc c elt in
+      let ind = gensym "ind" in
+      s >@ elt_code >@ lift
+        [ ind, Gep(struct_ty, struct_op, [Const 0L; i64_op_of_int i ])
+        ; gensym "store",  Store(ll_elt_ty, elt_op, Id ind) ]
+    in
+    let ind_code = List.fold_left add_elt [] l in
+    struct_ty, struct_op, alloc_code >@ ind_code
 
   | Ast.Proj (e, id) ->
     let ans_ty, ptr_op, code = cmp_exp_lhs tc c exp in
@@ -374,7 +392,15 @@ and cmp_exp_lhs (tc : TypeCtxt.t) (c:Ctxt.t) (e:exp node) : Ll.ty * Ll.operand *
      You will find the TypeCtxt.lookup_field_name function helpful.
   *)
   | Ast.Proj (e, i) ->
-    failwith "todo: Ast.Proj case of cmp_exp_lhs"
+    let struct_ty, struct_op, struct_code = cmp_exp tc c e in
+    let s_id = match struct_ty with
+      | Ptr (Namedt t) -> t
+      | _ -> failwith "yeh kya type hai" in
+    let ans_ty, idx = TypeCtxt.lookup_field_name s_id i tc in
+    let ptr_id, tmp_id = gensym "index_ptr", gensym "tmp" in
+    (cmp_ty tc ans_ty), (Id ptr_id),
+    struct_code  >@ lift
+      [ptr_id, Gep(struct_ty, struct_op, [i64_op_of_int 0; Const idx]) ]
 
 
   (* ARRAY TASK: Modify this index code to call 'oat_assert_array_length' before doing the
@@ -514,7 +540,7 @@ and cmp_stmt (tc : TypeCtxt.t) (c:Ctxt.t) (rt:Ll.ty) (stmt:Ast.stmt node) : Ctxt
      let lcond, lbody, lpost = gensym "cond", gensym "body", gensym "post" in
      let _,body_code = cmp_block tc ci rt body  in
      let _,after_code = cmp_block tc ci rt after  in
-     c, init 
+     c, init
         >:: T (Br lcond)
         >:: L lcond >@ guard_code >:: T (Cbr (guard_op, lbody, lpost))
         >:: L lbody >@ body_code  >@ after_code >:: T (Br lcond)
@@ -533,7 +559,7 @@ and cmp_stmt (tc : TypeCtxt.t) (c:Ctxt.t) (rt:Ll.ty) (stmt:Ast.stmt node) : Ctxt
 
 (* Compile a series of statements *)
 and cmp_block (tc : TypeCtxt.t) (c:Ctxt.t) (rt:Ll.ty) (stmts:Ast.block) : Ctxt.t * stream =
-  List.fold_left (fun (c, code) s -> 
+  List.fold_left (fun (c, code) s ->
       let c, stmt_code = cmp_stmt tc c rt s in
       c, code >@ stmt_code
     ) (c,[]) stmts
@@ -553,7 +579,7 @@ let get_struct_defns (p:Ast.prog) : TypeCtxt.t =
 
 
 (* Adds each function identifier to the context at an
-   appropriately translated type.  
+   appropriately translated type.
 
    NOTE: The Gid of a function is just its source name
 *)
@@ -563,14 +589,14 @@ let cmp_function_ctxt (tc : TypeCtxt.t) (c:Ctxt.t) (p:Ast.prog) : Ctxt.t =
          let ft = TRef (RFun (List.map fst args, frtyp)) in
          Ctxt.add c fname (cmp_ty tc ft, Gid fname)
       | _ -> c
-    ) c p 
+    ) c p
 
-(* Populate a context with bindings for global variables 
+(* Populate a context with bindings for global variables
    mapping OAT identifiers to LLVMlite gids and their types.
 
    Only a small subset of OAT expressions can be used as global initializers
-   in well-formed programs. (The constructors starting with C and Id's 
-   for global function values). 
+   in well-formed programs. (The constructors starting with C and Id's
+   for global function values).
 *)
 let cmp_global_ctxt (tc : TypeCtxt.t) (c:Ctxt.t) (p:Ast.prog) : Ctxt.t =
   let gexp_ty c = function
@@ -600,7 +626,7 @@ let cmp_fdecl (tc : TypeCtxt.t) (c:Ctxt.t) (f:Ast.fdecl node) : Ll.fdecl * (Ll.g
     let ll_ty = cmp_ty tc s_typ in
     let alloca_id = gensym s_id in
     let c = Ctxt.add c s_id (Ptr ll_ty, Ll.Id alloca_id)in
-    c, [] 
+    c, []
        >:: E(alloca_id, Alloca ll_ty)
        >:: I(gensym "store", Store(ll_ty, Id ll_id, Id alloca_id))
        >@ code,
@@ -633,7 +659,7 @@ let rec cmp_gexp c (tc : TypeCtxt.t) (e:Ast.exp node) : Ll.gdecl * (Ll.gid * Ll.
   | CNull r -> (cmp_ty tc (TNullRef r), GNull), []
   | CBool b -> (I1, (if b then GInt 1L else GInt 0L)), []
   | CInt i  -> (I64, GInt i), []
-  | Id id   -> ((fst @@ Ctxt.lookup id c), GGid id), [] 
+  | Id id   -> ((fst @@ Ctxt.lookup id c), GGid id), []
 
   | CStr s ->
     let gid = gensym "str" in
@@ -648,7 +674,7 @@ let rec cmp_gexp c (tc : TypeCtxt.t) (e:Ast.exp node) : Ll.gdecl * (Ll.gid * Ll.
            gd::elts, gs' @ gs) cs ([], [])
     in
     let len = List.length cs in
-    let ll_u = cmp_ty tc u in 
+    let ll_u = cmp_ty tc u in
     let gid = gensym "global_arr" in
     let arr_t = Struct [ I64; Array(len, ll_u) ] in
     let arr_i = GStruct [ I64, GInt (Int64.of_int len); Array(len, ll_u), GArray elts ] in
@@ -656,9 +682,25 @@ let rec cmp_gexp c (tc : TypeCtxt.t) (e:Ast.exp node) : Ll.gdecl * (Ll.gid * Ll.
     let cast = GBitcast (Ptr arr_t, GGid gid, Ptr final_t) in
     (Ptr final_t, cast), (gid, (arr_t, arr_i))::gs
 
-  (* STRUCT TASK: Complete this code that generates the global initializers for a struct value. *)  
+  (* STRUCT TASK: Complete this code that generates the global initializers for a struct value. *)
+
   | CStruct (id, cs) ->
-    failwith "todo: Cstruct case of cmp_gexp"
+    let fnames = List.map fst cs in
+    let ftyps = List.map (fun h ->
+        let ast_ty = TypeCtxt.lookup_field id h tc in
+        cmp_ty tc ast_ty) fnames in
+    let elist = List.map snd cs in
+    let elts, gs = List.fold_right
+        (fun cst (elts, gs) ->
+           let gd, gs' = cmp_gexp c tc cst in
+           gd::elts, gs' @ gs) elist ([], [])
+    in
+    let gid = gensym "global_struct" in
+    let struct_t = Struct ftyps in
+    let struct_i = GStruct elts in
+    let final_t = Namedt id in
+    let cast = GBitcast (Ptr struct_t, GGid gid, Ptr final_t) in
+    (Ptr final_t, cast), (gid, (struct_t, struct_i))::gs
 
   | _ -> failwith "bad global initializer"
 

@@ -45,7 +45,7 @@ let aiman_unit_tests = [
   ]
 
 (*let aiman_oat_test =
-  [("hw5programs/array_test.oat", "", "00")]*)
+  [("hw5programs/aiman_tree.oat", "", "00")]*)
 
 let provided_tests : suite = [
     Test("Unit tests", aiman_unit_tests);
